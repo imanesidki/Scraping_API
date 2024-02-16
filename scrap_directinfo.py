@@ -1,0 +1,31 @@
+from flask import Flask, Response, request
+import requests
+import json
+
+app = Flask(__name__)
+
+@app.route('/directinfo_ma.py', methods=['GET'])
+def scrape_company_data():    
+
+    searchResponse = requests.get('https://www.directinfo.ma/directinfo-backend/api/queryDsl/search/' + request.args.get('name'))
+    searchJson = searchResponse.json()
+
+    companyDatabaseID = str(searchJson[0][0]['id'])
+
+    companyResponse = requests.get('https://www.directinfo.ma/directinfo-backend/api/entreprise/' + companyDatabaseID)
+    companyJson = companyResponse.json()
+
+    data = {
+        "companyName": companyJson['denomination'],
+        "companyRC": companyJson['numeroRC'],
+        "companyICE": companyJson['numeroICE'],
+        "companyCapital": companyJson['capital'],
+        "companyCity": companyJson['tribunal'],
+        "companyLegalStatus": companyJson['formeJuridique'],
+        "companyImmatriculation": companyJson['dateImmatriculation']
+    }
+    response = Response(json.dumps(data, indent=4, ensure_ascii=False), content_type='application/json; charset=utf-8')
+    return response
+
+if __name__ == '__main__':
+    app.run(host='localhost', port=8001)
