@@ -7,5 +7,5 @@ It then returns the retrieved data in JSON format, including the company name, r
 
 ## Run Scripts:
 Install Dependencies in your python environment: pip install flask<br>
-Run script in your python environment: python scrap_charika.py<br>
-Access the API in your browser: http://HOST:PORT/charika_ma.py?name=COMPANY_NAME
+Run script in your python environment: python scrap_charika.py<br> python scrap_directinfo.py<br>
+Access the API in your browser: http://HOST:PORT/charika_ma.py?name=COMPANY_NAME<br> http://HOST:PORT/directinfo_ma.py?name=COMPANY_NAME
