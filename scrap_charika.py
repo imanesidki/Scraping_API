@@ -56,13 +56,18 @@ def get_jsessionid():
 # Scrape company data
 @app.route('/charika_ma.py', methods=['GET'])
 def scrape_company_data():
+    if not request.args.get('name'):
+        return Response(json.dumps({"status": False, "error": "Please provide a company name"}, indent=4, ensure_ascii=False), content_type='application/json; charset=utf-8')
+
     # Get the JSESSIONID
     jsessionid = get_jsessionid()
+    # Prepare the search URL
     search_url = f'{base_url}/societe-rechercher'
+    regionToSearch = request.args.get('region') if request.args.get('region') else ''
     # Prepare the form data
     form_data = {
         'sDenomination': request.args.get('name'),
-        'sRegion': '',
+        'sRegion': regionToSearch,
         'sActivite': ''
     }
     # Send a POST request to the search endpoint

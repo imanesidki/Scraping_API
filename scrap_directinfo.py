@@ -6,7 +6,8 @@ app = Flask(__name__)
 
 @app.route('/directinfo_ma.py', methods=['GET'])
 def scrape_company_data():    
-
+    if not request.args.get('name'):
+        return Response(json.dumps({"status": False, "error": "Please provide a company name"}, indent=4, ensure_ascii=False), content_type='application/json; charset=utf-8')
     searchResponse = requests.get('https://www.directinfo.ma/directinfo-backend/api/queryDsl/search/' + request.args.get('name'))
     searchJson = searchResponse.json()
 
@@ -29,3 +30,5 @@ def scrape_company_data():
 
 if __name__ == '__main__':
     app.run(host='localhost', port=8001)
+
+# Access the API: http://localhost:8001/directinfo_ma.py?name=company_name
