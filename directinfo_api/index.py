@@ -1,34 +1,29 @@
-from flask import Flask, Response, request
+from fastapi import FastAPI, Response, HTTPException, Request
 import requests
 import json
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route('/index.py', methods=['GET'])
-def scrape_company_data():    
-    if not request.args.get('name'):
-        return Response(json.dumps({"status": False, "error": "Please provide a company name"}, indent=4, ensure_ascii=False), content_type='application/json; charset=utf-8')
-    searchResponse = requests.get('https://www.directinfo.ma/directinfo-backend/api/queryDsl/search/' + request.args.get('name'))
-    searchJson = searchResponse.json()
+@app.get('/index.py')
+async def scrape_company_data(name: str):
+    if not name:
+        raise HTTPException(status_code=400, detail="Please provide a company name")
+        
+    search_response = requests.get(f'https://www.directinfo.ma/directinfo-backend/api/queryDsl/search/{name}')
+    search_json = search_response.json()
 
-    companyDatabaseID = str(searchJson[0][0]['id'])
+    company_database_id = str(search_json[0][0]['id'])
 
-    companyResponse = requests.get('https://www.directinfo.ma/directinfo-backend/api/entreprise/' + companyDatabaseID)
-    companyJson = companyResponse.json()
+    company_response = requests.get(f'https://www.directinfo.ma/directinfo-backend/api/entreprise/{company_database_id}')
+    company_json = company_response.json()
 
     data = {
-        "companyName": companyJson['denomination'],
-        "companyRC": companyJson['numeroRC'],
-        "companyICE": companyJson['numeroICE'],
-        "companyCapital": companyJson['capital'],
-        "companyCity": companyJson['tribunal'],
-        "companyLegalStatus": companyJson['formeJuridique'],
-        "companyImmatriculation": companyJson['dateImmatriculation']
+        "companyName": company_json['denomination'],
+        "companyRC": company_json['numeroRC'],
+        "companyICE": company_json['numeroICE'],
+        "companyCapital": company_json['capital'],
+        "companyCity": company_json['tribunal'],
+        "companyLegalStatus": company_json['formeJuridique'],
+        "companyImmatriculation": company_json['dateImmatriculation']
     }
-    response = Response(json.dumps(data, indent=4, ensure_ascii=False), content_type='application/json; charset=utf-8')
-    return response
-
-if __name__ == '__main__':
-    app.run(host='localhost', port=8001)
-
-# Access the API: http://localhost:8000/direct_api/?name=company_name
+    return data
