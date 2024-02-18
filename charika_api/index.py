@@ -56,7 +56,7 @@ def get_jsessionid():
     return jsessionid
 
 # Scrape company data
-@app.route('/scrap_charika.py', methods=['GET'])
+@app.route('/index.py', methods=['GET'])
 def scrape_company_data():
     if not request.args.get('name'):
         return Response(json.dumps({"status": False, "error": "Please provide a company name"}, indent=4, ensure_ascii=False),  status=400, content_type='application/json; charset=utf-8')
@@ -139,4 +139,4 @@ if __name__ == "__main__":
     app.run(host='localhost', port=8000)
 
 # Run script: python scrap_charika.py
-# Access the API: http://localhost:8000/scrap_charika.py?name=company_name
+# Access the API: http://localhost:8000/charika_api/?name=company_name
