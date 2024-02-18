@@ -1,142 +1,134 @@
-from flask import Flask, Response, request
+from http.server import BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 import requests
 import json
-import time
-import pickle
-import os
 import re
 
-base_url = 'https://www.charika.ma/' # Website url to scrap data from
-bot_account_email = 'losag12404@fahih.com' # Bot account email
-bot_account_password = 'losag12404@fahih.com' # Bot account password
-cookie_path = 'jsessionid.pkl' # Path to save JSESSIONID
+class handler(BaseHTTPRequestHandler):
 
-app = Flask(__name__)
+    base_url = 'https://www.charika.ma/'
+    bot_account_email = 'losag12404@fahih.com'
+    bot_account_password = 'losag12404@fahih.com'
 
-# Save JSESSIONID to a local file
-def save_cookie(jsessionid):
-    with open(cookie_path, 'wb') as f:
-        pickle.dump({'jsessionid': jsessionid, 'timestamp': time.time()}, f)
+    # Main function to handle the GET request
+    def do_GET(self):
+        try:
+            parsed_path = urlparse(self.path)
+            query = parse_qs(parsed_path.query)
+            name = query.get('name', [None])[0]
+            regionToSearch = query.get('region', [''])[0]
 
-# Load JSESSIONID from the local file
-def load_cookie():
-    if os.path.exists(cookie_path):
-        with open(cookie_path, 'rb') as f:
-            return pickle.load(f)
-    return None
+            if not name:
+                self.respond({"status": False, "error": "Please provide a company name"}, 400)
+                return
+        except Exception as e:
+            self.respond({"status": False, "error": f"An error occurred: {str(e)}"}, 500)
+        jsessionid = self.get_jsessionid()
+        if not jsessionid:
+            self.respond({"status": False, "error": "Failed to get JSESSIONID"}, 400)
+            return
 
-# Check if the saved JSESSIONID is still valid
-def is_cookie_valid(cookie_data):
-    if cookie_data:
-        # Check if the cookie is still valid (30 minutes)
-        elapsed_time = time.time() - cookie_data['timestamp']
-        return elapsed_time < 1800, cookie_data['jsessionid']
-    return False, None
+        data = self.scrape_company_data(name, regionToSearch, jsessionid)
+        if data:
+            self.respond(data, 200)
+        else:
+            self.respond({"status": False, "error": "Failed to scrape company data"}, 500)
 
-# Get or refresh JSESSIONID
-def get_jsessionid():
-    cookie_data = load_cookie()
-    valid, jsessionid = is_cookie_valid(cookie_data)
-    if valid:
-        return jsessionid
-    
-    # Send a POST request to the login endpoint
-    login_endpoint = f'{base_url}/user-login'
-    payload = f"username={bot_account_email}&password={bot_account_password}"
-    headers = {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-    }
-    response = requests.post(login_endpoint, headers=headers, data=payload)
-    if response.status_code != 200:
+    # Helper function to send the response
+    def respond(self, content, status_code=200):
+        self.send_response(status_code)
+        self.send_header('Content-type', 'application/json; charset=utf-8')
+        self.end_headers()
+        response_content = json.dumps(content, ensure_ascii=False, indent = 4).encode('utf-8')
+        self.wfile.write(response_content)
+
+    def get_jsessionid(self):
+        # Attempt to login and get JSESSIONID
+        login_endpoint = f'{self.base_url}/user-login'
+        payload = f"username={self.bot_account_email}&password={self.bot_account_password}"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
+        response = requests.post(login_endpoint, headers=headers, data=payload)
+        if response.status_code == 200:
+            return response.cookies.get('JSESSIONID')
         return None
-    # Save the JSESSIONID
-    jsessionid = response.cookies.get('JSESSIONID')
-    save_cookie(jsessionid)
-    return jsessionid
 
-# Scrape company data
-@app.route('/index.py', methods=['GET'])
-def scrape_company_data():
-    if not request.args.get('name'):
-        return Response(json.dumps({"status": False, "error": "Please provide a company name"}, indent=4, ensure_ascii=False),  status=400, content_type='application/json; charset=utf-8')
+    # Scrape company data
+    def scrape_company_data(self, name, region, jsessionid):
+        search_url = f'{self.base_url}/societe-rechercher'
+        form_data = {'sDenomination': name, 'sRegion': region, 'sActivite': ''}
+        cookies = {'JSESSIONID': jsessionid}
+        response = requests.post(search_url, data=form_data, cookies=cookies, allow_redirects=True)
 
-    # Get the JSESSIONID
-    jsessionid = get_jsessionid()
-    if not jsessionid:
-        return Response(json.dumps({"status": False, "error": "Failed to get JSESSIONID"}, indent=4, ensure_ascii=False), status=400, content_type='application/json; charset=utf-8')
-    # Prepare the search URL
-    search_url = f'{base_url}/societe-rechercher' #in Morocco
-    regionToSearch = request.args.get('region') if request.args.get('region') else ''
-    # Prepare the form data
-    form_data = {
-        'sDenomination': request.args.get('name'),
-        'sRegion': regionToSearch,
-        'sActivite': ''
-    }
-    # Send a POST request to the search endpoint
-    cookies = {'JSESSIONID': jsessionid}
-    response = requests.post(search_url, data=form_data, cookies=cookies, allow_redirects=True)
+        if not response.ok:
+            return None
 
-    # Check if the request was successful
-    if response.status_code != 200 and response.status_code != 302 and response.status_code != 301:
-        return Response(json.dumps({"status": False, "error": "Failed to search with status code from server: " + str(response.status_code)}, indent=4, ensure_ascii=False), status=400, content_type='application/json; charset=utf-8')
+        soup = BeautifulSoup(response.content, 'html.parser')
+        results = soup.find_all('h5', class_='strong text-lowercase truncate')
+        if not results:
+            return {"status": False, "error": "No results found"}
 
-    # Parse the response content
-    soup = BeautifulSoup(response.content, 'html.parser')
-    # Check if there are any results
-    results = soup.find_all('h5', class_='strong text-lowercase truncate')
-    if not results:
-        return Response(json.dumps({"status": False, "error": "No results found"}, indent=4, ensure_ascii=False), status=404, content_type='application/json; charset=utf-8')
-        
-    # Get the first result (company page link)
-    first_result = results[0].find('a', class_='goto-fiche')
-    company_id = first_result.get('href') if first_result else ""
+        first_result = results[0].find('a', class_='goto-fiche')
+        company_id = first_result.get('href') if first_result else ""
+        company_url = f'{self.base_url}/{company_id}'
+        response = requests.get(company_url, cookies=cookies)
+
+        if not response or response.status_code != 200:
+            return None
+
+        html_content = response.content
+        if not html_content:
+            return None
+        data = self.parse_company_data(html_content)
+        return data
+
+    def parse_company_data(self, html_content):
+        if not html_content:
+            return None
+        soup = BeautifulSoup(html_content, 'html.parser')
+     
+        # Helper function to get sibling text
+        def get_sibling_text(keyword):
+            target = soup.find(lambda tag: tag.name == "td" and keyword in tag.get_text())
+            return target.find_next_sibling("td").get_text().strip() if target else None
     
-    # Send a GET request to the company page
-    company_url = f'{base_url}/{company_id}'
-    response = requests.get(company_url, cookies=cookies)
-
-    # Check if the request was successful
-    if response.status_code != 200:
-        return Response(json.dumps({"status": False, "error": "Failed to get company data"}, indent=4, ensure_ascii=False), status=400, content_type='application/json; charset=utf-8')
-
-    soup = BeautifulSoup(response.content, 'html.parser')
-
-    # helper function to get sibling text
-    def get_sibling_text(element, keyword):
-        # Find the target element
-        target = soup.find(lambda tag: tag.name == "td" and keyword in tag.get_text())
-        return target.find_next_sibling("td").get_text().strip() if target else None
-
-    # Parsing companyRC having the initial format: [companyRC] (Tribunal de [companyCity])
-    companyRCCity = get_sibling_text(soup, "RC").replace("Tribunal de ", "")
-    # Extract companyRC using Regex expression
-    companyRC = re.search(r'(\d+)', companyRCCity)
-    # Extract companyCity using Regex expression
-    companyCity = re.search(r'\((.*?)\)', companyRCCity)
-
-    # Extract company data
-    data = {
-        "companyName": soup.find("h1", class_="nom").get_text(strip=True) if soup.find("h1", class_="nom") else None,
-        "companyRC": companyRC.group(0) if companyRC else None,
-        "companyICE": get_sibling_text(soup, "ICE"),
-        "companyCapital": int(re.sub(r'\D', '', get_sibling_text(soup, "Capital"))),
-        "companyCity": companyCity.group(1) if companyCity else None,
-        "companyLegalStatus": get_sibling_text(soup, "Forme juridique"),
-        "companyAddress": soup.find("div", class_="ligne-tfmw").find("label").get_text(strip=True) if soup.find("div", class_="ligne-tfmw") and soup.find("div", class_="ligne-tfmw").find("label") else None,
-        "companypPhone": [tel.get_text(strip=True) for tel in soup.select(".marketingInfoTelFax")],
-        "companyFax": soup.select_one("div.row.ligne-tfmw:nth-of-type(2) .marketingInfoTelFax").get_text(strip=True) if soup.select_one("div.row.ligne-tfmw:nth-of-type(2) .marketingInfoTelFax") else None,
-    }
-
-    # return 200 status code
-
-    # Return the data as a JSON response
-    return Response(json.dumps(data, indent=4, ensure_ascii=False), status=200, content_type='application/json; charset=utf-8')
-
-if __name__ == "__main__":
-    # Run the Flask app
-    app.run(host='localhost', port=8000)
-
-# Run script: python scrap_charika.py
-# Access the API: http://localhost:8000/charika_api/?name=company_name
+        # Extracting company data
+        company_name = soup.find("h1", class_="nom").get_text(strip=True) if soup.find("h1", class_="nom") else None
+    
+        # Parsing companyRC and companyCity from a combined field if necessary
+        company_rc_city_raw = get_sibling_text("RC")
+        company_rc = None
+        company_city = None
+        if company_rc_city_raw:
+            rc_city_match = re.search(r'(\d+).*?\((.*?)\)', company_rc_city_raw)
+            if rc_city_match:
+                company_rc = rc_city_match.group(1)
+                company_city = rc_city_match.group(2)
+    
+        company_ice = get_sibling_text("ICE")
+        company_capital_raw = get_sibling_text("Capital")
+        company_capital = int(re.sub(r'\D', '', company_capital_raw)) if company_capital_raw else None
+        company_legal_status = get_sibling_text("Forme juridique")
+        company_address = soup.find("div", class_="ligne-tfmw").find("label").get_text(strip=True) if soup.find("div", class_="ligne-tfmw") and soup.find("div", class_="ligne-tfmw").find("label") else None
+    
+        # Extracting phone numbers, assuming they are in a list
+        phone_numbers = [tel.get_text(strip=True) for tel in soup.select(".marketingInfoTelFax")]
+    
+        # Assuming the first number is the phone and the second is the fax, if present
+        company_phone = phone_numbers[0] if phone_numbers else None
+        company_fax = phone_numbers[1] if len(phone_numbers) > 1 else None
+    
+        # Constructing the data dictionary
+        data = {
+            "companyName": company_name,
+            "companyRC": company_rc,
+            "companyICE": company_ice,
+            "companyCapital": company_capital,
+            "companyCity": company_city,
+            "companyLegalStatus": company_legal_status,
+            "companyAddress": company_address,
+            "companyPhone": company_phone,
+            "companyFax": company_fax,
+        }
+    
+        return data
