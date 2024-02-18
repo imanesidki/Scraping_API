@@ -48,6 +48,8 @@ def get_jsessionid():
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
     }
     response = requests.post(login_endpoint, headers=headers, data=payload)
+    if response.status_code != 200:
+        return None
     # Save the JSESSIONID
     jsessionid = response.cookies.get('JSESSIONID')
     save_cookie(jsessionid)
@@ -57,12 +59,14 @@ def get_jsessionid():
 @app.route('/charika_ma.py', methods=['GET'])
 def scrape_company_data():
     if not request.args.get('name'):
-        return Response(json.dumps({"status": False, "error": "Please provide a company name"}, indent=4, ensure_ascii=False), content_type='application/json; charset=utf-8')
+        return Response(json.dumps({"status": False, "error": "Please provide a company name"}, indent=4, ensure_ascii=False),  status=400, content_type='application/json; charset=utf-8')
 
     # Get the JSESSIONID
     jsessionid = get_jsessionid()
+    if not jsessionid:
+        return Response(json.dumps({"status": False, "error": "Failed to get JSESSIONID"}, indent=4, ensure_ascii=False), status=400, content_type='application/json; charset=utf-8')
     # Prepare the search URL
-    search_url = f'{base_url}/societe-rechercher'
+    search_url = f'{base_url}/societe-rechercher' #in Morocco
     regionToSearch = request.args.get('region') if request.args.get('region') else ''
     # Prepare the form data
     form_data = {
@@ -74,12 +78,16 @@ def scrape_company_data():
     cookies = {'JSESSIONID': jsessionid}
     response = requests.post(search_url, data=form_data, cookies=cookies, allow_redirects=True)
 
+    # Check if the request was successful
+    if response.status_code != 200 and response.status_code != 302 and response.status_code != 301:
+        return Response(json.dumps({"status": False, "error": "Failed to search with status code from server: " + str(response.status_code)}, indent=4, ensure_ascii=False), status=400, content_type='application/json; charset=utf-8')
+
     # Parse the response content
     soup = BeautifulSoup(response.content, 'html.parser')
     # Check if there are any results
     results = soup.find_all('h5', class_='strong text-lowercase truncate')
     if not results:
-        return Response(json.dumps({"status": False, "error": "No results found"}, indent=4, ensure_ascii=False), content_type='application/json; charset=utf-8')
+        return Response(json.dumps({"status": False, "error": "No results found"}, indent=4, ensure_ascii=False), status=404, content_type='application/json; charset=utf-8')
         
     # Get the first result (company page link)
     first_result = results[0].find('a', class_='goto-fiche')
@@ -88,6 +96,11 @@ def scrape_company_data():
     # Send a GET request to the company page
     company_url = f'{base_url}/{company_id}'
     response = requests.get(company_url, cookies=cookies)
+
+    # Check if the request was successful
+    if response.status_code != 200:
+        return Response(json.dumps({"status": False, "error": "Failed to get company data"}, indent=4, ensure_ascii=False), status=400, content_type='application/json; charset=utf-8')
+
     soup = BeautifulSoup(response.content, 'html.parser')
 
     # helper function to get sibling text
@@ -116,8 +129,10 @@ def scrape_company_data():
         "companyFax": soup.select_one("div.row.ligne-tfmw:nth-of-type(2) .marketingInfoTelFax").get_text(strip=True) if soup.select_one("div.row.ligne-tfmw:nth-of-type(2) .marketingInfoTelFax") else None,
     }
 
+    # return 200 status code
+
     # Return the data as a JSON response
-    return Response(json.dumps(data, indent=4, ensure_ascii=False), content_type='application/json; charset=utf-8')
+    return Response(json.dumps(data, indent=4, ensure_ascii=False), status=200, content_type='application/json; charset=utf-8')
 
 if __name__ == "__main__":
     # Run the Flask app
