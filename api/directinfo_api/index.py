@@ -15,13 +15,13 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            searchResponse = requests.get(f'https://www.directinfo.ma/directinfo-backend/api/queryDsl/search/{name}')
+            searchResponse = requests.get(f'https://www.directinfo.ma/directinfo-backend/api/queryDsl/search/{name}', timeout=20)
             # get the first page of the search results
             searchJson = searchResponse.json() 
             # get the first company's database ID
             companyDatabaseID = str(searchJson[0][0]['id']) 
             # get the company's details
-            companyResponse = requests.get(f'https://www.directinfo.ma/directinfo-backend/api/entreprise/{companyDatabaseID}')
+            companyResponse = requests.get(f'https://www.directinfo.ma/directinfo-backend/api/entreprise/{companyDatabaseID}', timeout=20)
             companyJson = companyResponse.json()
             # prepare the response
             data = {

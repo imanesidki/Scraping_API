@@ -48,7 +48,7 @@ class handler(BaseHTTPRequestHandler):
         login_endpoint = f'{self.base_url}/user-login'
         payload = f"username={self.bot_account_email}&password={self.bot_account_password}"
         headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'}
-        response = requests.post(login_endpoint, headers=headers, data=payload)
+        response = requests.post(login_endpoint, headers=headers, data=payload, timeout=20)
         if response.status_code == 200:
             return response.cookies.get('JSESSIONID')
         return None
@@ -58,7 +58,7 @@ class handler(BaseHTTPRequestHandler):
         search_url = f'{self.base_url}/societe-rechercher'
         form_data = {'sDenomination': name, 'sRegion': region, 'sActivite': ''}
         cookies = {'JSESSIONID': jsessionid}
-        response = requests.post(search_url, data=form_data, cookies=cookies, allow_redirects=True)
+        response = requests.post(search_url, data=form_data, cookies=cookies, allow_redirects=True, timeout=20)
 
         if not response.ok:
             return None
@@ -71,7 +71,7 @@ class handler(BaseHTTPRequestHandler):
         first_result = results[0].find('a', class_='goto-fiche')
         company_id = first_result.get('href') if first_result else ""
         company_url = f'{self.base_url}/{company_id}'
-        response = requests.get(company_url, cookies=cookies)
+        response = requests.get(company_url, cookies=cookies, timeout=20)
 
         if not response or response.status_code != 200:
             return None
