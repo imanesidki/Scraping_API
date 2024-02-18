@@ -1,4 +1,3 @@
 {
-    "redirects": [{ "source": "/", "destination": "/api/directinfo_api" }]
-  }
-  
+  "redirects": [{ "source": "/api/directinfo_api/(.*)", "destination": "api/directinfo_api/index.py" }]
+}
