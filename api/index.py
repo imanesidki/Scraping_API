@@ -5,7 +5,7 @@ import json
 app = FastAPI()
 
 @app.get('/index.py')
-async def scrape_company_data(name: str):
+def scrape_company_data(name: str):
     if not name:
         raise HTTPException(status_code=400, detail="Please provide a company name")
         
