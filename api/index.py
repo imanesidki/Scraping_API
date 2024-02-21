@@ -1,7 +1,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 import json
-from utils_charika import requests, get_jsessionid, scrape_company_data
+from api.utils_charika import requests, get_jsessionid, scrape_company_data
 
 class handler(BaseHTTPRequestHandler):
 
@@ -77,12 +77,12 @@ class handler(BaseHTTPRequestHandler):
 
 
 
-# To test on localhost
-def run(server_class=HTTPServer, handler_class=handler, port=8080):
-    server_address = ('', port)
-    httpd = server_class(server_address, handler_class)
-    print(f'Starting server on port {port}...')
-    httpd.serve_forever()
+# # To test on localhost
+# def run(server_class=HTTPServer, handler_class=handler, port=8080):
+#     server_address = ('', port)
+#     httpd = server_class(server_address, handler_class)
+#     print(f'Starting server on port {port}...')
+#     httpd.serve_forever()
 
-if __name__ == '__main__':
-    run()
+# if __name__ == '__main__':
+#     run()
