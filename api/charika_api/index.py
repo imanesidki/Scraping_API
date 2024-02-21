@@ -53,6 +53,7 @@ class handler(BaseHTTPRequestHandler):
             return response.cookies.get('JSESSIONID')
         return None
 
+
     # Scrape company data
     def scrape_company_data(self, name, region, jsessionid):
         search_url = f'{self.base_url}/societe-rechercher'
@@ -68,8 +69,18 @@ class handler(BaseHTTPRequestHandler):
         if not results:
             return {"status": False, "error": "No results found"}
 
-        first_result = results[0].find('a', class_='goto-fiche')
-        company_id = first_result.get('href') if first_result else ""
+        # Iterate through all results to find a matching company name
+        for result in results:
+            a_tag = result.find('a', class_='goto-fiche')
+            if a_tag:
+                company_name = a_tag.text.strip().lower()
+                # Compare the company name from the result with the one you're looking for
+                if company_name and company_name == name.lower():
+                    company_id = a_tag.get('href')
+                    break
+            else:  # This else corresponds to the for loop, executed only if no break occurs
+                return {"status": False, "error": "No matching company found"}
+
         company_url = f'{self.base_url}/{company_id}'
         response = requests.get(company_url, cookies=cookies, timeout=20)
 
@@ -81,6 +92,7 @@ class handler(BaseHTTPRequestHandler):
             return None
         data = self.parse_company_data(html_content)
         return data
+
 
     def parse_company_data(self, html_content):
         if not html_content:
