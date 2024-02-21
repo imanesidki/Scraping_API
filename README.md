@@ -1,14 +1,7 @@
-# Scrap_charika
-This Flask app serves as an API for retrieving company data from the Charika website (https://www.charika.ma/).<br>It allows users to retrieve information about companies by sending a GET request with the company name as a parameter. <br>The app utilizes BeautifulSoup for web scraping and provides a JSON response containing details such as company name, registration number (RC), tax identification number (ICE), capital, legal status, address, phone numbers, and fax numbers. <br>The app also handles session management using JSESSIONID cookies for authentication. Additionally, it includes functionality to save and load JSESSIONID from a local file to maintain session persistence.
+## API for Retreiving Companies Data
+Directory listing of available APIs: https://scraping-api-gray.vercel.app/api/<br>
 
-# Scrap_directinfo
-This Flask app also serves as an API for retrieving company data from the directinfo website (https://www.directinfo.ma/) based on the company name provided as a query parameter.<br>
-It then returns the retrieved data in JSON format, including the company name, registration number (RC), tax identification number (ICE), capital, city, legal status, and registration date.
+Alternatively, choose an endpoint according to each website to scrape data from: [charika_api](https://scraping-api-gray.vercel.app/api/charika_api) or [directinfo_api](https://scraping-api-gray.vercel.app/api/directinfo_api).<br>
 
-## Run Scripts:
-Install Dependencies in your python environment: pip install flask<br>
-Run script in your python environment: <br>python scrap_charika.py<br> python scrap_directinfo.py<br>
-Access the API in your browser: 
-<br>http://HOST:PORT/charika_ma.py?name=COMPANY_NAME
-<br> or http://HOST:PORT/charika_ma.py?name=COMPANY_NAME&region=REGION 
-<br> http://HOST:PORT/directinfo_ma.py?name=COMPANY_NAME
+Make sure to provide a company `name` query parameter to the URL:<br>
+(e.g.: https://scraping-api-gray.vercel.app/api/directinfo_api?name=inflexit)
