@@ -33,7 +33,7 @@ class handler(BaseHTTPRequestHandler):
         if data:
             self.respond(data, 200)
         else:
-            self.respond({"status": False, "error": "Failed to scrape company data"}, 500)
+            self.respond({"status": False, "error": "No result found"}, 500)
 
     # Helper function to send the response
     def respond(self, content, status_code=200):
@@ -67,7 +67,7 @@ class handler(BaseHTTPRequestHandler):
         soup = BeautifulSoup(response.content, 'html.parser')
         results = soup.find_all('h5', class_='strong text-lowercase truncate')
         if not results:
-            return {"status": False, "error": "No results found"}
+            return None
 
         company_id = None
         # Iterate through all results to find a matching company name
@@ -80,7 +80,7 @@ class handler(BaseHTTPRequestHandler):
                     company_id = a_tag.get('href')
                     break
         if (company_id is None):  # This if corresponds to the for loop, executed only if no break occurs
-            return {"status": False, "error": "No matching company found"}
+            return None
 
         company_url = f'{self.base_url}/{company_id}'
         response = requests.get(company_url, cookies=cookies, timeout=20)
