@@ -80,7 +80,8 @@ class handler(BaseHTTPRequestHandler):
                     company_id = a_tag.get('href')
                     break
         if (company_id is None):  # This if corresponds to the for loop, executed only if no break occurs
-            return None
+            a_tag = results[0].find('a', class_='goto-fiche')
+            company_id = a_tag.get('href') if a_tag else ""
 
         company_url = f'{self.base_url}/{company_id}'
         response = requests.get(company_url, cookies=cookies, timeout=20)
