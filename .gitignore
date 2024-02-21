@@ -1,5 +1,7 @@
-
 bin/
 lib/
 *.pkl
 *.cfg
+include/
+api/__pycache__/
+*.DS_Store
