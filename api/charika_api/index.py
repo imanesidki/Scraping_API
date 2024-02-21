@@ -1,4 +1,4 @@
-from http.server import BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 import requests
@@ -70,6 +70,7 @@ class handler(BaseHTTPRequestHandler):
             return None
 
         company_id = None
+        company_name = None
         # Iterate through all results to find a matching company name
         for result in results:
             a_tag = result.find('a', class_='goto-fiche')
@@ -146,3 +147,15 @@ class handler(BaseHTTPRequestHandler):
         }
     
         return data
+
+
+# To test on localhost
+# def run(server_class=HTTPServer, handler_class=handler, port=8080):
+#     server_address = ('', port)
+#     httpd = server_class(server_address, handler_class)
+#     print(f'Starting server on port {port}...')
+#     httpd.serve_forever()
+
+
+# if __name__ == '__main__':
+#     run()
