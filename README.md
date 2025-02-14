@@ -1,4 +1,4 @@
-## API for Retreiving Companies Data
+## API for Retreiving Companies Data using Web Scraping
 
 Acces the [API](https://scraping-api-gray.vercel.app/api).<br>
 
